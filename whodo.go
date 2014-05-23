@@ -1,7 +1,5 @@
 package whodo
 
-// TODO(ttacon): add docs
-
 import (
 	"flag"
 	"fmt"
