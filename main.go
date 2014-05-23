@@ -1,6 +1,6 @@
-package main
+package whodo
 
-// TODO(ttacon): open API and move cli to cli package, also add docs
+// TODO(ttacon): add docs
 
 import (
 	"flag"
@@ -8,7 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"os"
-	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -22,33 +21,47 @@ var (
 	printNum = flag.Bool("n", false, "print the number of todos per person")
 )
 
+// Todo represents a todo of the form
+//     // TODO(ttacon): here's a message
+// It holds who the author is, what the message is and
+// the position of the todo in a given token.FileSet
 type Todo struct {
 	Pos    token.Pos
 	Author string
 	Todo   string
 }
 
-func main() {
-	flag.Parse()
-	if len(*pkg) == 0 {
-		flag.Usage()
-		return
+// TodosIn returns all of the todos within a given package and
+// their positions are with respect to the given fset. If position
+// info is not desired, then a token.FileSet doesn't have to be
+// passed in. For example:
+//
+//     fset := token.NewFileSet()
+//     todos, err := whodo.TodosIn(fset, "github.com/ttacon/whodo")
+//
+//     // The above is equivalent to the code below if you
+//     // don't care about position info.
+//
+//     todos, err := whodo.TodosIn(nil, "github.com/ttacon/whodo")
+// The returned []Todo is sorted by author name, file in package
+// and line in file.
+func TodosIn(fset *token.FileSet, pkgPath string) ([]Todo, error) {
+	var todos []Todo
+	if fset == nil {
+		// they didn't feel like providing their own FileSet
+		fset = token.NewFileSet()
 	}
 
-	var (
-		todos []Todo
-		fset  = token.NewFileSet()
-	)
-
-	pkgs, err := parser.ParseDir(fset, path.Join(gopath, "src", *pkg), func(f os.FileInfo) bool {
+	pkgs, err := parser.ParseDir(fset, pkgPath, func(f os.FileInfo) bool {
 		return !f.IsDir() && !strings.HasPrefix(f.Name(), ".") && strings.HasSuffix(f.Name(), ".go")
 	}, parser.ParseComments)
 
 	if err != nil {
 		Log("failed to parse pkg %q, err %v\n", pkg, err)
-		return
+		return nil, err
 	}
 
+	// need to find a better way...
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			for _, commGroup := range file.Comments {
@@ -67,27 +80,15 @@ func main() {
 	}
 
 	sort.Sort(byNameAndPosition(todos))
-
-	if *printNum {
-		printNumTodos(todos)
-		return
-	}
-
-	// TODO(ttacon): do pretty printing (also only show file name since this is
-	// per pkg)
-	for _, todo := range todos {
-		pos := fset.Position(todo.Pos)
-		fmt.Printf("%s %s %d %q\n", todo.Author, pos.Filename, pos.Line, todo.Todo)
-	}
-
+	return todos, nil
 }
 
 func printNumTodos(todos []Todo) {
 	var (
 		counter     = 0
+		longestName = 0
 		lastPerson  = ""
 		seen        = make(map[string]int)
-		longestName = 0
 	)
 
 	for _, todo := range todos {
@@ -131,6 +132,7 @@ func (b byNameAndPosition) Less(i, j int) bool {
 	return b[i].Author < b[j].Author
 }
 
+// Log logs any messages with the prefix "[whodo]".
 func Log(message string, args ...interface{}) {
 	if message[len(message)-1] != '\n' {
 		message += "\n"
