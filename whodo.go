@@ -1,7 +1,6 @@
 package whodo
 
 import (
-	"flag"
 	"fmt"
 	"go/parser"
 	"go/token"
@@ -14,9 +13,6 @@ import (
 var (
 	todoMatcher = regexp.MustCompile("TODO\\((.*)\\): (.*)")
 	gopath      = os.Getenv("GOPATH")
-
-	pkg      = flag.String("pkg", "", "package to inspect")
-	printNum = flag.Bool("n", false, "print the number of todos per person")
 )
 
 // Todo represents a todo of the form
@@ -55,7 +51,7 @@ func TodosIn(fset *token.FileSet, pkgPath string) ([]Todo, error) {
 	}, parser.ParseComments)
 
 	if err != nil {
-		Log("failed to parse pkg %q, err %v\n", pkg, err)
+		Log("failed to parse pkg %q, err %v\n", pkgPath, err)
 		return nil, err
 	}
 
@@ -81,7 +77,15 @@ func TodosIn(fset *token.FileSet, pkgPath string) ([]Todo, error) {
 	return todos, nil
 }
 
-func printNumTodos(todos []Todo) {
+// PrintNumTodos prints each author in the todo slice along with
+// the number of todos they have left). Sample output might look
+// like:
+//
+//  ltacon 1
+//  ttacon 3
+//   b1lly 1000
+//
+func PrintNumTodos(todos []Todo) {
 	var (
 		counter     = 0
 		longestName = 0
@@ -112,10 +116,9 @@ func printNumTodos(todos []Todo) {
 		longestName = len(lastPerson)
 	}
 
-	// pretty print
-	// TODO(ttacon): build format string once and use many times
+	formatString := fmt.Sprintf("%%%ds %%d\n", longestName)
 	for name, numTodos := range seen {
-		fmt.Printf(fmt.Sprintf("%%%ds %%d\n", longestName), name, numTodos)
+		fmt.Printf(formatString, name, numTodos)
 	}
 }
 

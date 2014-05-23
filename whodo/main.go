@@ -4,9 +4,20 @@ import (
 	"flag"
 	"fmt"
 	"go/token"
+	"os"
 	"path"
 
 	"github.com/ttacon/whodo"
+)
+
+var (
+	pkg      = flag.String("pkg", "", "package to inspect")
+	printNum = flag.Bool("n", false, "print the number of todos per person")
+	// TODO(ttacon): add recursive package option (maybe number of
+	// package levels to traverse)
+
+	// TODO(ttacon): ensure this exists
+	gopath = os.Getenv("GOPATH")
 )
 
 func main() {
@@ -27,7 +38,7 @@ func main() {
 	}
 
 	if *printNum {
-		printNumTodos(todos)
+		whodo.PrintNumTodos(todos)
 		return
 	}
 
