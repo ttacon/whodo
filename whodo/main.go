@@ -6,9 +6,14 @@ import (
 	"go/token"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/ttacon/whodo"
 )
+
+// TODO(ttacon): make multiline comments work
+// i.e. // TOD(ttacon): a multiline
+//      // comment, this is
 
 var (
 	pkg      = flag.String("pkg", "", "package to inspect")
@@ -16,7 +21,6 @@ var (
 	// TODO(ttacon): add recursive package option (maybe number of
 	// package levels to traverse)
 
-	// TODO(ttacon): ensure this exists
 	gopath = os.Getenv("GOPATH")
 )
 
@@ -24,6 +28,11 @@ func main() {
 	flag.Parse()
 	if len(*pkg) == 0 {
 		flag.Usage()
+		return
+	}
+
+	if len(gopath) == 0 {
+		whodo.Log("GOPATH must be set")
 		return
 	}
 
@@ -42,10 +51,28 @@ func main() {
 		return
 	}
 
-	// TODO(ttacon): do pretty printing (also only show file name since this is
-	// per pkg)
+	printTodos(todos, fset)
+}
+
+func printTodos(todos []whodo.Todo, fset *token.FileSet) {
+	var (
+		authLen, fnameLen int
+	)
+
+	for _, todo := range todos {
+		if len(todo.Author) > authLen {
+			authLen = len(todo.Author)
+		}
+
+		if pos := fset.Position(todo.Pos); len(filepath.Base(pos.Filename)) > fnameLen {
+			fnameLen = len(filepath.Base(pos.Filename))
+		}
+	}
+
+	// TODO(ttacon): make printing of line numbers prettier
+	fmtString := fmt.Sprintf("%%%ds  %%%ds  %%4d  %%q\n", authLen, fnameLen)
 	for _, todo := range todos {
 		pos := fset.Position(todo.Pos)
-		fmt.Printf("%s %s %d %q\n", todo.Author, pos.Filename, pos.Line, todo.Todo)
+		fmt.Printf(fmtString, todo.Author, filepath.Base(pos.Filename), pos.Line, todo.Todo)
 	}
 }
