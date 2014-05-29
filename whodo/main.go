@@ -11,10 +11,6 @@ import (
 	"github.com/ttacon/whodo"
 )
 
-// TODO(ttacon): make multiline comments work
-// i.e. // TOD(ttacon): a multiline
-//      // comment, this is
-
 var (
 	pkg      = flag.String("pkg", "", "package to inspect")
 	printNum = flag.Bool("n", false, "print the number of todos per person")

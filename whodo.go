@@ -56,17 +56,25 @@ func TodosIn(fset *token.FileSet, pkgPath string) ([]Todo, error) {
 	}
 
 	// need to find a better way...
+	currTodo := -1
 	for _, pkg := range pkgs {
 		for _, file := range pkg.Files {
 			for _, commGroup := range file.Comments {
+				inTodo := false
 				for _, comm := range commGroup.List {
 					matches := todoMatcher.FindStringSubmatch(comm.Text)
 					if len(matches) > 0 {
+						inTodo = true
 						todos = append(todos, Todo{
 							Pos:    comm.Slash,
 							Author: matches[1],
 							Todo:   matches[2],
 						})
+						currTodo += 1
+					} else if inTodo {
+						// NOTE(ttacon): maybe only do this if in paren?
+						// we already have a todo built, append this comment line to the last todo
+						todos[currTodo].Todo = todos[currTodo].Todo + strings.TrimLeft(comm.Text, "//")
 					}
 				}
 			}
